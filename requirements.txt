@@ -1,0 +1,7 @@
+slack_bolt
+google-adk
+python-dotenv
+google-genai
+google-cloud-aiplatform
+google-auth
+pyyaml
