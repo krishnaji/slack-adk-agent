@@ -5,3 +5,4 @@ google-genai
 google-cloud-aiplatform
 google-auth
 pyyaml
+google-cloud-discoveryengine

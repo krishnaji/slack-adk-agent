@@ -1,7 +1,9 @@
 # Slack ADK Agent
-
+##### Google Search
 ![Slack Agent Demo](slack-agent.gif)
-
+---
+##### Vertex AI Search Tool
+![Slack Agent Demo](vertex-ai-search-tool.gif)
 This project implements a Slack Agent using the **Google Agent Development Kit (ADK)** and **Slack Bolt**. The agent can interact with users in Slack channels, answer questions, and perform Google Searches using a delegated search agent.
 
 ## Features
@@ -9,6 +11,7 @@ This project implements a Slack Agent using the **Google Agent Development Kit (
 - **Slack Integration**: Built with `slack_bolt` to handle events like `app_mention` and `message`.
 - **ADK Powered**: Uses Google ADK for agent logic, tool management, and multi-agent delegation.
 - **Google Search**: Includes a specialized `search_agent` that can perform Google Searches to answer user queries.
+- **Vertex AI Search**: Integrates with Vertex AI Search to answer questions using your internal data stores.
 - **Socket Mode**: Supports Slack Socket Mode for easy local development without public endpoints.
 
 ## Prerequisites
@@ -16,6 +19,7 @@ This project implements a Slack Agent using the **Google Agent Development Kit (
 - Python 3.10+
 - A Slack App with Socket Mode enabled.
 - Google Cloud Project with Vertex AI API enabled.
+- **Vertex AI Search Data Store**: A data store created in Vertex AI Search & Conversation.
 
 ## Setup
 
@@ -44,6 +48,7 @@ This project implements a Slack Agent using the **Google Agent Development Kit (
     GOOGLE_CLOUD_PROJECT=<your-google-cloud-project-id>
     GOOGLE_CLOUD_LOCATION=us-central1
     GOOGLE_GENAI_USE_VERTEXAI=1
+    VERTEX_AI_SEARCH_DATA_STORE_ID=<your-data-store-id>
     ```
 
 4.  **Slack App Configuration**:
@@ -66,7 +71,11 @@ The bot will start in **Socket Mode** if `SLACK_APP_TOKEN` is present in `.env`.
 - **Mention the bot**: `@ADK Agent help me find info about X`
 - **Direct Message**: DM the bot directly.
 
-The agent will process your request, potentially delegating to the `search_agent` if external information is needed, and reply in a thread.
+- **Direct Message**: DM the bot directly.
+
+The agent will process your request:
+1.  **Internal Knowledge**: It first checks your Vertex AI Search data store for answers.
+2.  **External Search**: If no internal answer is found and external research is approved, it delegates to Google Search.
 
 
 

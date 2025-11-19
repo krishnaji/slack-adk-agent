@@ -9,12 +9,16 @@ from google.adk.auth.auth_credential import AuthCredential, AuthCredentialTypes,
 from google.adk.tools.openapi_tool.openapi_spec_parser.openapi_toolset import OpenAPIToolset
 from google.adk.agents.llm_agent import LlmAgent
 from google.adk.tools import google_search
-from google.adk.tools import FunctionTool,AgentTool
+from google.adk.tools import FunctionTool, AgentTool, VertexAiSearchTool
 from google.adk.agents import Agent
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
+from dotenv import load_dotenv
 
+
+# Load .env from the same directory as this file
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 # Set default environment variables if not present
 _, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
@@ -54,22 +58,56 @@ slack_toolset = OpenAPIToolset(
   auth_scheme=auth_scheme,
   auth_credential=auth_credential,
 )
+
+# 4. Initialize Vertex AI Search Tool
+data_store_id = os.environ.get("VERTEX_AI_SEARCH_DATA_STORE_ID")
+project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
+print(f"Using data store ID: {data_store_id}")
+if data_store_id :
+    # Construct full path assuming default_collection
+    data_store_id = f"projects/{project_id}/locations/{location}/collections/default_collection/dataStores/{data_store_id}"
+    print(f"Using data store ID: {data_store_id}")
+
+vertex_ai_search_tool = VertexAiSearchTool(
+    data_store_id=data_store_id
+)
 MODEL_NAME = 'gemini-2.5-flash'
 # Configure and create the main LLM Agent.
 search_agent = Agent(
 name="search_agent",
 model=MODEL_NAME,
 description="An AI agent to search for content using Google Search.",
-instruction="You are an expert at using Google Search to find relevant information for presentations.",
+instruction="You are an expert at using Google Search to find relevant information",
 tools=[google_search]
 )
 
+vertex_ai_search_tool_agent = Agent(
+name="vertex_ai_search_agent",
+model=MODEL_NAME,
+description="An agent that searches for content using Vertex AI Search.",
+instruction="""You are an expert at using Vertex AI Search to find relevant information about user queries.
+You MUST provide a summary followed by a 'Reference:' section.
+Format:
+<Summary of findings>
+
+Reference:
+1. [Title](url)
+2. [Title](url)
+
+If no URL is available, use the title as the citation.
+""",
+tools=[vertex_ai_search_tool]
+)
 
 root_agent = LlmAgent(
    model=MODEL_NAME,
    name='slack_assistant',
-   instruction='You are a helpful assistant that answers questions and performs actions. Use the provided tools to post messages to Slack.If external research is approved, delegate queries to the `search_agent` to find relevant information.',
-   tools=[slack_toolset,  AgentTool(search_agent)]
+   instruction="""You are a helpful assistant that answers questions and performs actions. Use the provided tools to post messages to Slack.
+   First try to answer the question using internal knowledge by delegating to `vertex_ai_search_agent`.
+   If external research is approved, delegate queries to the `search_agent` to find relevant information.
+   ALWAYS preserve the 'Reference:' section provided by the `vertex_ai_search_agent` in your final response. Do not summarize the references, list them exactly as provided.""",
+   tools=[slack_toolset, AgentTool(search_agent), AgentTool(vertex_ai_search_tool_agent)]
 )
 
 app = App(root_agent=root_agent, name="slack_app")
